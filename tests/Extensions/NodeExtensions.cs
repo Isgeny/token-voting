@@ -3,7 +3,8 @@
 public static class PrivateNode
 {
     private static readonly PrivateKeyAccount MainAccount;
-
+    private static readonly object Lock = new();
+    
     public const char ChainId = 'R';
     public static readonly Node Instance;
 
@@ -23,7 +24,15 @@ public static class PrivateNode
 
     public static PrivateKeyAccount GenerateAccount()
     {
-        var account = PrivateKeyAccount.CreateFromSeed(PrivateKeyAccount.GenerateSeed(), ChainId);
+        var seed = PrivateKeyAccount.GenerateSeed();
+
+        // Something wrong with multi-thread in library
+        PrivateKeyAccount account;
+        lock (Lock)
+        {
+            account = PrivateKeyAccount.CreateFromSeed(seed, ChainId);
+        }
+
         var transferTransaction = new TransferTransaction(ChainId, MainAccount.PublicKey, account.Address, Assets.WAVES, 1, 0.005M, Assets.WAVES);
         Instance.Broadcast(MainAccount, transferTransaction);
         return account;
@@ -34,6 +43,12 @@ public static class PrivateNode
         var issueTransaction = new IssueTransaction(MainAccount.PublicKey, name, null, quantity, decimals, reissuable, ChainId);
         var assetId = Instance.Broadcast(MainAccount, issueTransaction);
         return Instance.GetAsset(assetId);
+    }
+
+    public static void TransferAsset(Asset asset, decimal quantity, PrivateKeyAccount recipient)
+    {
+        var transferTransaction = new TransferTransaction(ChainId, MainAccount.PublicKey, recipient.Address, asset, quantity, 0.005M, Assets.WAVES);
+        Instance.Broadcast(MainAccount, transferTransaction);
     }
 
     public static string Broadcast(this Node node, PrivateKeyAccount sender, Transaction transaction)

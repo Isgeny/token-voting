@@ -6,25 +6,32 @@ namespace TokenVoting.Tests.Fixture;
 public class VotingAccount
 {
     private const string ScriptPath = "../../../../scripts/token-voting.ride";
-    private readonly PrivateKeyAccount _account;
 
     public VotingAccount()
     {
-        _account = PrivateNode.GenerateAccount();
+        Account = PrivateNode.GenerateAccount();
         var scriptText = File.ReadAllText(ScriptPath);
         var compiledScript = PrivateNode.Instance.CompileScript(scriptText);
-        var setScriptTransaction = new SetScriptTransaction(_account.PublicKey, compiledScript, PrivateNode.ChainId);
-        PrivateNode.Instance.Broadcast(_account, setScriptTransaction);
+        var setScriptTransaction = new SetScriptTransaction(Account.PublicKey, compiledScript, PrivateNode.ChainId);
+        PrivateNode.Instance.Broadcast(Account, setScriptTransaction);
     }
 
-    public string Address => _account.Address;
+    public PrivateKeyAccount Account { get; }
 
-    public string InvokeConstructor(ConstructorOptions options) => InvokeConstructor(_account, options);
+    public string InvokeConstructor(ConstructorOptions options) => InvokeConstructor(Account, options);
 
     public string InvokeConstructor(PrivateKeyAccount callerAccount, ConstructorOptions options)
     {
         var arguments = new List<object> { options.AvailableOptions, options.VotingAssetId, options.StartHeight, options.EndHeight, options.QuorumPercent };
-        var invokeScriptTransaction = new InvokeScriptTransaction(PrivateNode.ChainId, callerAccount.PublicKey, _account.Address, "constructor", arguments, null, 0.005M, Assets.WAVES);
+        var invokeScriptTransaction = new InvokeScriptTransaction(PrivateNode.ChainId, callerAccount.PublicKey, Account.Address, "constructor", arguments, null, 0.005M, Assets.WAVES);
+        return PrivateNode.Instance.Broadcast(callerAccount, invokeScriptTransaction);
+    }
+
+    public string InvokePut(PrivateKeyAccount callerAccount, Asset asset, decimal quantity) => InvokePut(callerAccount, new Dictionary<Asset, decimal> { { asset, quantity } });
+
+    public string InvokePut(PrivateKeyAccount callerAccount, Dictionary<Asset, decimal> payment)
+    {
+        var invokeScriptTransaction = new InvokeScriptTransaction(PrivateNode.ChainId, callerAccount.PublicKey, Account.Address, "put", null, payment, 0.005M, Assets.WAVES);
         return PrivateNode.Instance.Broadcast(callerAccount, invokeScriptTransaction);
     }
 }

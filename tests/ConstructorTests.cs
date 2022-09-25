@@ -91,6 +91,26 @@ public class ConstructorTests
     }
 
     [Fact]
+    public void InvokeSecondTime_ThrowException()
+    {
+        var votingAsset = PrivateNode.IssueAsset(8, 6);
+        var options = new ConstructorOptions
+        {
+            AvailableOptions = "option:yes,option:no",
+            VotingAssetId = votingAsset.Id,
+            StartHeight = 100,
+            EndHeight = 200,
+            QuorumPercent = 50,
+        };
+
+        _votingAccount.InvokeConstructor(options);
+
+        var invoke = () => _votingAccount.InvokeConstructor(options);
+
+        invoke.Should().Throw<Exception>().WithMessage("*Already initialized");
+    }
+
+    [Fact]
     public void Invoke_Success()
     {
         var votingAsset = PrivateNode.IssueAsset(8, 6);
@@ -105,6 +125,7 @@ public class ConstructorTests
 
         var expectedData = new Dictionary<string, object>
         {
+            { "initialized", true },
             { "available_options", "option:yes,option:no" },
             { "voting_asset", votingAsset.Id },
             { "start_height", 100L },
@@ -121,7 +142,7 @@ public class ConstructorTests
         {
             transactionId.Should().NotBeEmpty();
 
-            var actualData = PrivateNode.Instance.GetAddressData(_votingAccount.Address);
+            var actualData = PrivateNode.Instance.GetAddressData(_votingAccount.Account.Address);
             actualData.Should().BeEquivalentTo(expectedData);
         }
     }

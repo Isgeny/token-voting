@@ -2,6 +2,8 @@
 {-# CONTENT_TYPE DAPP #-}
 {-# SCRIPT_TYPE ACCOUNT #-}
 
+let initializedKey = "initialized"
+
 let availableOptionsKey = "available_options"
 
 let votingAssetKey = "voting_asset"
@@ -20,17 +22,22 @@ let votedKey = "voted"
 
 func getStringOrFail(key: String) = match getString(this, key) {
     case s: String => s
-    case _ => throw("Not initialized")
+    case _ => throw("Key not exist")
 }
 
 func getIntOrFail(key: String) = match getInteger(this, key) {
     case i: Int => i
-    case _ => throw("Not initialized")
+    case _ => throw("Key not exist")
 }
 
 func getAssetOrFail(asset: String) = match assetInfo(fromBase58String(asset)) {
     case a: Asset => a
     case _ => throw("Asset not exist")
+}
+
+func getBoolOrFalse(key: String) = match getBoolean(this, key) {
+    case b: Boolean => b
+    case _ => false
 }
 
 func getIntOrZero(key: String) = match getInteger(this, key) {
@@ -44,29 +51,61 @@ func userBalanceKey(userAddress: String) = makeString(["balance", userAddress], 
 func constructor(availableOptions: String, votingAsset: String, startHeight: Int, endHeight: Int, quorumPercent: Int) = {
     if (i.caller != this)
         then throw("Access denied")
-        else if (startHeight > endHeight)
-            then throw("Start height can't be larger than end height")
-            else if (quorumPercent < 1 || quorumPercent > 99)
-                then throw("Quorum percent should be in range [1, 99]")
-                else {
-                    let votingAssetInfo = getAssetOrFail(votingAsset)
-                    let quorum = fraction(votingAssetInfo.quantity, quorumPercent, 100)
-                    [
-                        StringEntry(availableOptionsKey, availableOptions),
-                        StringEntry(votingAssetKey, votingAsset),
-                        IntegerEntry(startHeightKey, startHeight),
-                        IntegerEntry(endHeightKey, endHeight),
-                        IntegerEntry(totalKey, votingAssetInfo.quantity),
-                        IntegerEntry(quorumPercentKey, quorumPercent),
-                        IntegerEntry(quorumKey, quorum),
-                        IntegerEntry(votedKey, 0)
-                    ]
-                }
+        else {
+            let initialized = getBoolOrFalse(initializedKey)
+            if (initialized)
+                then throw("Already initialized")
+                else if (startHeight > endHeight)
+                    then throw("Start height can't be larger than end height")
+                    else if (quorumPercent < 1 || quorumPercent > 99)
+                        then throw("Quorum percent should be in range [1, 99]")
+                        else {
+                            let votingAssetInfo = getAssetOrFail(votingAsset)
+                            let quorum = fraction(votingAssetInfo.quantity, quorumPercent, 100)
+                            [
+                                BooleanEntry(initializedKey, true),
+                                StringEntry(availableOptionsKey, availableOptions),
+                                StringEntry(votingAssetKey, votingAsset),
+                                IntegerEntry(startHeightKey, startHeight),
+                                IntegerEntry(endHeightKey, endHeight),
+                                IntegerEntry(totalKey, votingAssetInfo.quantity),
+                                IntegerEntry(quorumPercentKey, quorumPercent),
+                                IntegerEntry(quorumKey, quorum),
+                                IntegerEntry(votedKey, 0)
+                            ]
+                        }
+        }
 }
 
 @Callable(i)
 func put() = {
-    [StringEntry("hello", "world")]
+    let initialized = getBoolOrFalse(initializedKey)
+    if (!initialized)
+        then throw("Not initialized")
+        else if (i.caller == this)
+            then throw("Access denied")
+            else if (size(i.payments) != 1)
+                then throw("Only one payment is allowed")
+                else {
+                    let payment = value(i.payments[0])
+                    let votingAssetId = fromBase58String(getStringOrFail(votingAssetKey))
+                    if (payment.assetId != votingAssetId)
+                        then throw("Wrong asset")
+                        else {
+                            let startHeight = getIntOrFail(startHeightKey)
+                            let endHeight = getIntOrFail(endHeightKey)
+                            if (height < startHeight)
+                                then throw("Voting is not started")
+                                else if (height > endHeight)
+                                    then throw("Voting is over")
+                                    else {
+                                        let userAddress = toString(i.caller)
+                                        let currentUserBalance = getIntOrZero(userBalanceKey(userAddress))
+                                        let newUserBalance = currentUserBalance + payment.amount
+                                        [IntegerEntry(userBalanceKey(userAddress), newUserBalance)]
+                                    }
+                        }
+                }
 }
 
 @Callable(i)
