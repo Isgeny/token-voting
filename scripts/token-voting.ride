@@ -1,0 +1,23 @@
+{-# STDLIB_VERSION 6 #-}
+{-# CONTENT_TYPE DAPP #-}
+{-# SCRIPT_TYPE ACCOUNT #-}
+
+@Callable(i)
+func constructor(votingAsset: String, startHeight: Int, endHeight: Int, quorumPercent: Int) = {
+    [StringEntry("hello", "world")]
+}
+
+@Callable(i)
+func put() = {
+    [StringEntry("hello", "world")]
+}
+
+@Callable(i)
+func castVote(selectedOptions: String) = {
+    [StringEntry("hello", "world")]
+}
+
+@Callable(i)
+func withdraw() = {
+    [StringEntry("hello", "world")]
+}
