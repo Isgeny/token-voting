@@ -1,5 +1,4 @@
-﻿using FluentAssertions.Execution;
-using TokenVoting.Tests.Extensions;
+﻿using TokenVoting.Tests.Extensions;
 using TokenVoting.Tests.Fixture;
 using TokenVoting.Tests.Models;
 
@@ -15,6 +14,24 @@ public class PutTests
     }
 
     [Fact]
+    public void InvokeFromAdminAccount_ThrowException()
+    {
+        var invoke = () => _votingAccount.InvokePut(_votingAccount.Account, new Dictionary<Asset, decimal>());
+
+        invoke.Should().Throw<Exception>().WithMessage("*Access denied");
+    }
+
+    [Fact]
+    public void InvokeWithoutPayments_ThrowException()
+    {
+        var account = PrivateNode.GenerateAccount();
+
+        var invoke = () => _votingAccount.InvokePut(account, new Dictionary<Asset, decimal>());
+
+        invoke.Should().Throw<Exception>().WithMessage("*Only one payment is allowed");
+    }
+
+    [Fact]
     public void InvokeWhenNotInitialized_ThrowException()
     {
         var votingAsset = PrivateNode.IssueAsset(10, 0);
@@ -24,45 +41,6 @@ public class PutTests
         var invoke = () => _votingAccount.InvokePut(account, votingAsset, 1);
 
         invoke.Should().Throw<Exception>().WithMessage("*Not initialized");
-    }
-
-    [Fact]
-    public void InvokeFromAdminAccount_ThrowException()
-    {
-        var votingAsset = PrivateNode.IssueAsset(8, 6);
-        PrivateNode.TransferAsset(votingAsset, 1, _votingAccount.Account);
-        _votingAccount.InvokeConstructor(new ConstructorOptions
-        {
-            AvailableOptions = "option:yes,option:no",
-            VotingAssetId = votingAsset.Id,
-            StartHeight = 1,
-            EndHeight = 1,
-            QuorumPercent = 50,
-        });
-
-        var invoke = () => _votingAccount.InvokePut(_votingAccount.Account, votingAsset, 1);
-
-        invoke.Should().Throw<Exception>().WithMessage("*Access denied");
-    }
-
-    [Fact]
-    public void InvokeWithoutPayments_ThrowException()
-    {
-        var votingAsset = PrivateNode.IssueAsset(8, 6);
-        var account = PrivateNode.GenerateAccount();
-        PrivateNode.TransferAsset(votingAsset, 1, account);
-        _votingAccount.InvokeConstructor(new ConstructorOptions
-        {
-            AvailableOptions = "option:yes,option:no",
-            VotingAssetId = votingAsset.Id,
-            StartHeight = 100,
-            EndHeight = 200,
-            QuorumPercent = 50,
-        });
-
-        var invoke = () => _votingAccount.InvokePut(account, new Dictionary<Asset, decimal>());
-
-        invoke.Should().Throw<Exception>().WithMessage("*Only one payment is allowed");
     }
 
     [Fact]

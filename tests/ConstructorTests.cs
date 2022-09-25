@@ -1,4 +1,3 @@
-using FluentAssertions.Execution;
 using TokenVoting.Tests.Extensions;
 using TokenVoting.Tests.Fixture;
 using TokenVoting.Tests.Models;
@@ -15,10 +14,27 @@ public class ConstructorTests
     }
 
     [Fact]
-    public void InvokeFromRandomAccount_ThrowException()
+    public void InvokeFromNonAdminAccount_ThrowException()
     {
-        var votingAsset = PrivateNode.IssueAsset(1, 0);
-        var randomAccount = PrivateNode.GenerateAccount();
+        var account = PrivateNode.GenerateAccount();
+        var options = new ConstructorOptions
+        {
+            AvailableOptions = "option:yes,option:no",
+            VotingAssetId = PrivateNode.FakeAssetId,
+            StartHeight = 100,
+            EndHeight = 200,
+            QuorumPercent = 50,
+        };
+
+        var invoke = () => _votingAccount.InvokeConstructor(account, options);
+
+        invoke.Should().Throw<Exception>().WithMessage("*Access denied");
+    }
+
+    [Fact]
+    public void InvokeSecondTime_ThrowException()
+    {
+        var votingAsset = PrivateNode.IssueAsset(8, 6);
         var options = new ConstructorOptions
         {
             AvailableOptions = "option:yes,option:no",
@@ -28,9 +44,30 @@ public class ConstructorTests
             QuorumPercent = 50,
         };
 
-        var invoke = () => _votingAccount.InvokeConstructor(randomAccount, options);
+        _votingAccount.InvokeConstructor(options);
 
-        invoke.Should().Throw<Exception>().WithMessage("*Access denied");
+        var invoke = () => _votingAccount.InvokeConstructor(options);
+
+        invoke.Should().Throw<Exception>().WithMessage("*Already initialized");
+    }
+
+    [Fact]
+    public void InvokeWithPayment_ThrowException()
+    {
+        var votingAsset = PrivateNode.IssueAsset(8, 6);
+        PrivateNode.TransferAsset(votingAsset, 1, _votingAccount.Account);
+        var options = new ConstructorOptions
+        {
+            AvailableOptions = "option:yes,option:no",
+            VotingAssetId = votingAsset.Id,
+            StartHeight = 100,
+            EndHeight = 200,
+            QuorumPercent = 50,
+        };
+
+        var invoke = () => _votingAccount.InvokeConstructor(options, new Dictionary<Asset, decimal> { { votingAsset, 1 } });
+
+        invoke.Should().Throw<Exception>().WithMessage("*Payments are prohibited");
     }
 
     [Fact]
@@ -39,7 +76,7 @@ public class ConstructorTests
         var options = new ConstructorOptions
         {
             AvailableOptions = "option:yes,option:no",
-            VotingAssetId = "7KsnSZrrvdAuwvdPi8nVEXJMPqZZJKwtcQJ2TssdouKm",
+            VotingAssetId = PrivateNode.FakeAssetId,
             StartHeight = 100,
             EndHeight = 200,
             QuorumPercent = 50,
@@ -88,26 +125,6 @@ public class ConstructorTests
         var invoke = () => _votingAccount.InvokeConstructor(options);
 
         invoke.Should().Throw<Exception>().WithMessage("*Quorum percent should be in range [1, 99]");
-    }
-
-    [Fact]
-    public void InvokeSecondTime_ThrowException()
-    {
-        var votingAsset = PrivateNode.IssueAsset(8, 6);
-        var options = new ConstructorOptions
-        {
-            AvailableOptions = "option:yes,option:no",
-            VotingAssetId = votingAsset.Id,
-            StartHeight = 100,
-            EndHeight = 200,
-            QuorumPercent = 50,
-        };
-
-        _votingAccount.InvokeConstructor(options);
-
-        var invoke = () => _votingAccount.InvokeConstructor(options);
-
-        invoke.Should().Throw<Exception>().WithMessage("*Already initialized");
     }
 
     [Fact]

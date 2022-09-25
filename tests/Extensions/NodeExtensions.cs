@@ -4,8 +4,9 @@ public static class PrivateNode
 {
     private static readonly PrivateKeyAccount MainAccount;
     private static readonly object Lock = new();
-    
+
     public const char ChainId = 'R';
+    public const string FakeAssetId = "7KsnSZrrvdAuwvdPi8nVEXJMPqZZJKwtcQJ2TssdouKm";
     public static readonly Node Instance;
 
     static PrivateNode()
@@ -49,6 +50,12 @@ public static class PrivateNode
     {
         var transferTransaction = new TransferTransaction(ChainId, MainAccount.PublicKey, recipient.Address, asset, quantity, 0.005M, Assets.WAVES);
         Instance.Broadcast(MainAccount, transferTransaction);
+    }
+
+    public static void SetData(PrivateKeyAccount account, string key, object value)
+    {
+        var dataTransaction = new DataTransaction(ChainId, account.PublicKey, new Dictionary<string, object> { { key, value } });
+        Instance.Broadcast(account, dataTransaction);
     }
 
     public static string Broadcast(this Node node, PrivateKeyAccount sender, Transaction transaction)

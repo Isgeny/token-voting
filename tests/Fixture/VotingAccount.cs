@@ -18,12 +18,12 @@ public class VotingAccount
 
     public PrivateKeyAccount Account { get; }
 
-    public string InvokeConstructor(ConstructorOptions options) => InvokeConstructor(Account, options);
+    public string InvokeConstructor(ConstructorOptions options, Dictionary<Asset, decimal>? payment = null) => InvokeConstructor(Account, options, payment);
 
-    public string InvokeConstructor(PrivateKeyAccount callerAccount, ConstructorOptions options)
+    public string InvokeConstructor(PrivateKeyAccount callerAccount, ConstructorOptions options, Dictionary<Asset, decimal>? payment = null)
     {
         var arguments = new List<object> { options.AvailableOptions, options.VotingAssetId, options.StartHeight, options.EndHeight, options.QuorumPercent };
-        var invokeScriptTransaction = new InvokeScriptTransaction(PrivateNode.ChainId, callerAccount.PublicKey, Account.Address, "constructor", arguments, null, 0.005M, Assets.WAVES);
+        var invokeScriptTransaction = new InvokeScriptTransaction(PrivateNode.ChainId, callerAccount.PublicKey, Account.Address, "constructor", arguments, payment, 0.005M, Assets.WAVES);
         return PrivateNode.Instance.Broadcast(callerAccount, invokeScriptTransaction);
     }
 
@@ -32,6 +32,12 @@ public class VotingAccount
     public string InvokePut(PrivateKeyAccount callerAccount, Dictionary<Asset, decimal> payment)
     {
         var invokeScriptTransaction = new InvokeScriptTransaction(PrivateNode.ChainId, callerAccount.PublicKey, Account.Address, "put", null, payment, 0.005M, Assets.WAVES);
+        return PrivateNode.Instance.Broadcast(callerAccount, invokeScriptTransaction);
+    }
+
+    public string InvokeWithdraw(PrivateKeyAccount callerAccount, Dictionary<Asset, decimal>? payment = null)
+    {
+        var invokeScriptTransaction = new InvokeScriptTransaction(PrivateNode.ChainId, callerAccount.PublicKey, Account.Address, "withdraw", null, payment, 0.005M, Assets.WAVES);
         return PrivateNode.Instance.Broadcast(callerAccount, invokeScriptTransaction);
     }
 }
