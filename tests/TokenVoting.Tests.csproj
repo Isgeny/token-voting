@@ -15,6 +15,10 @@
         <PackageReference Include="PCLCrypto" Version="2.0.147" />
         <PackageReference Include="PInvoke.NCrypt" Version="0.7.124" />
         <PackageReference Include="Validation" Version="2.5.51" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>

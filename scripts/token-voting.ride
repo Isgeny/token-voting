@@ -2,9 +2,66 @@
 {-# CONTENT_TYPE DAPP #-}
 {-# SCRIPT_TYPE ACCOUNT #-}
 
+let availableOptionsKey = "available_options"
+
+let votingAssetKey = "voting_asset"
+
+let startHeightKey = "start_height"
+
+let endHeightKey = "end_height"
+
+let totalKey = "total"
+
+let quorumPercentKey = "quorum_percent"
+
+let quorumKey = "quorum"
+
+let votedKey = "voted"
+
+func getStringOrFail(key: String) = match getString(this, key) {
+    case s: String => s
+    case _ => throw("Not initialized")
+}
+
+func getIntOrFail(key: String) = match getInteger(this, key) {
+    case i: Int => i
+    case _ => throw("Not initialized")
+}
+
+func getAssetOrFail(asset: String) = match assetInfo(fromBase58String(asset)) {
+    case a: Asset => a
+    case _ => throw("Asset not exist")
+}
+
+func getIntOrZero(key: String) = match getInteger(this, key) {
+    case i: Int => i
+    case _ => 0
+}
+
+func userBalanceKey(userAddress: String) = makeString(["balance", userAddress], "_")
+
 @Callable(i)
-func constructor(votingAsset: String, startHeight: Int, endHeight: Int, quorumPercent: Int) = {
-    [StringEntry("hello", "world")]
+func constructor(availableOptions: String, votingAsset: String, startHeight: Int, endHeight: Int, quorumPercent: Int) = {
+    if (i.caller != this)
+        then throw("Access denied")
+        else if (startHeight > endHeight)
+            then throw("Start height can't be larger than end height")
+            else if (quorumPercent < 1 || quorumPercent > 99)
+                then throw("Quorum percent should be in range [1, 99]")
+                else {
+                    let votingAssetInfo = getAssetOrFail(votingAsset)
+                    let quorum = fraction(votingAssetInfo.quantity, quorumPercent, 100)
+                    [
+                        StringEntry(availableOptionsKey, availableOptions),
+                        StringEntry(votingAssetKey, votingAsset),
+                        IntegerEntry(startHeightKey, startHeight),
+                        IntegerEntry(endHeightKey, endHeight),
+                        IntegerEntry(totalKey, votingAssetInfo.quantity),
+                        IntegerEntry(quorumPercentKey, quorumPercent),
+                        IntegerEntry(quorumKey, quorum),
+                        IntegerEntry(votedKey, 0)
+                    ]
+                }
 }
 
 @Callable(i)

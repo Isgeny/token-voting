@@ -5,6 +5,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0DAC3AA0-0021-4ADB-B93C-815556D9CC30}"
 	ProjectSection(SolutionItems) = preProject
 		..\scripts\token-voting.ride = ..\scripts\token-voting.ride
+		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
 Global
