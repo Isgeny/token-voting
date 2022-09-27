@@ -12,32 +12,93 @@ let quorumPercentKey = "quorum_percent"
 let quorumKey = "quorum"
 let votedKey = "voted"
 
-func getStringOrFail(key: String) = match getString(this, key) {
-    case s: String => s
-    case _ => throw("Key not exist")
+func getStringOrFail(key: String) = {
+    getString(this, key).valueOrErrorMessage("Key not exist")
 }
 
-func getIntOrFail(key: String) = match getInteger(this, key) {
-    case i: Int => i
-    case _ => throw("Key not exist")
+func getIntOrFail(key: String) = {
+    getInteger(this, key).valueOrErrorMessage("Key not exist")
 }
 
-func getAssetOrFail(asset: String) = match assetInfo(asset.fromBase58String()) {
-    case a: Asset => a
-    case _ => throw("Asset not exist")
+func getAssetOrFail(asset: String) = {
+    assetInfo(asset.fromBase58String()).valueOrErrorMessage("Asset not exist")
 }
 
-func getBoolOrFalse(key: String) = match getBoolean(this, key) {
-    case b: Boolean => b
-    case _ => false
+func getBoolOrFalse(key: String) = {
+    getBoolean(this, key).valueOrElse(false)
 }
 
-func getIntOrZero(key: String) = match getInteger(this, key) {
-    case i: Int => i
-    case _ => 0
+func getIntOrZero(key: String) = {
+    getInteger(this, key).valueOrElse(0)
 }
 
 func userBalanceKey(userAddress: String) = makeString(["balance", userAddress], "_")
+
+func userLastVoteKey(userAddress: String) = makeString(["last_vote", userAddress], "_")
+
+func userVotingPowerKey(userAddress: String) = makeString(["voting_power", userAddress], "_")
+
+func voteKey(option: String) = makeString(["vote", option], "_")
+
+func validateOptions(options: String) = {
+    let containsSpace = options.contains(" ")
+    let optionsList = options.split(",")
+    let containsEmpty = optionsList.containsElement("")
+    let containsEmptyGroup = optionsList.containsElement(":")
+    !containsSpace && !containsEmpty && !containsEmptyGroup && optionsList.size() > 1
+}
+
+func getUserLastOptionOrUnit(userAddress: String, index: Int) = { match getString(userLastVoteKey(userAddress)) {
+    case s: String => split(s, ":")[index]
+    case _ => unit
+}}
+
+func getUserOption(userBalance: Int, userVotingPower: Int, currentVote: String, lastVote: String|Unit) = { match lastVote {
+    case lastVoteValue: String => if (currentVote == lastVoteValue)
+        then { [IntegerEntry(voteKey(currentVote), getIntOrZero(voteKey(currentVote)) + userBalance - userVotingPower)] }
+        else {
+        [
+            IntegerEntry(voteKey(lastVoteValue), getIntOrZero(voteKey(lastVoteValue)) - userVotingPower),
+            IntegerEntry(voteKey(currentVote), getIntOrZero(voteKey(currentVote)) + userBalance)
+        ]
+    }
+    case _ => [ IntegerEntry(voteKey(currentVote), getIntOrZero(voteKey(currentVote)) + userBalance) ]
+}}
+
+func getUserOptions(userAddress: String, options: String) = {
+    let optionsList = split(options, ":")
+    let optionsListSize = optionsList.size()
+    let userBalance = getIntOrZero(userBalanceKey(userAddress))
+    let userVotingPower = getIntOrZero(userVotingPowerKey(userAddress))
+    if (optionsListSize == 1) then {
+        getUserOption(userBalance, userVotingPower, optionsList[0], getUserLastOptionOrUnit(userAddress, 0))
+    }
+    else if (optionsListSize == 2) then {
+        getUserOption(userBalance, userVotingPower, optionsList[0], getUserLastOptionOrUnit(userAddress, 0)) ++
+        getUserOption(userBalance, userVotingPower, optionsList[1], getUserLastOptionOrUnit(userAddress, 1))
+    }
+    else if (optionsListSize == 3) then {
+        getUserOption(userBalance, userVotingPower, optionsList[0], getUserLastOptionOrUnit(userAddress, 0)) ++
+        getUserOption(userBalance, userVotingPower, optionsList[1], getUserLastOptionOrUnit(userAddress, 1)) ++
+        getUserOption(userBalance, userVotingPower, optionsList[2], getUserLastOptionOrUnit(userAddress, 2))
+    }
+    else if (optionsListSize == 4) then {
+        getUserOption(userBalance, userVotingPower, optionsList[0], getUserLastOptionOrUnit(userAddress, 0)) ++
+        getUserOption(userBalance, userVotingPower, optionsList[1], getUserLastOptionOrUnit(userAddress, 1)) ++
+        getUserOption(userBalance, userVotingPower, optionsList[2], getUserLastOptionOrUnit(userAddress, 2)) ++
+        getUserOption(userBalance, userVotingPower, optionsList[3], getUserLastOptionOrUnit(userAddress, 3))
+    }
+    else if (optionsListSize == 5) then {
+        getUserOption(userBalance, userVotingPower, optionsList[0], getUserLastOptionOrUnit(userAddress, 0)) ++
+        getUserOption(userBalance, userVotingPower, optionsList[1], getUserLastOptionOrUnit(userAddress, 1)) ++
+        getUserOption(userBalance, userVotingPower, optionsList[2], getUserLastOptionOrUnit(userAddress, 2)) ++
+        getUserOption(userBalance, userVotingPower, optionsList[3], getUserLastOptionOrUnit(userAddress, 3)) ++
+        getUserOption(userBalance, userVotingPower, optionsList[4], getUserLastOptionOrUnit(userAddress, 4))
+    }
+    else {
+        throw("Not supported")
+    }
+}
 
 @Callable(i)
 func constructor(availableOptions: String, votingAsset: String, startHeight: Int, endHeight: Int, quorumPercent: Int) = {
@@ -45,6 +106,7 @@ func constructor(availableOptions: String, votingAsset: String, startHeight: Int
     let initialized = getBoolOrFalse(initializedKey)
     if (i.caller != this) then { throw("Access denied") }
     else if (payments != 0) then { throw("Payments are prohibited") }
+    else if (!validateOptions(availableOptions)) then { throw("Options are not in valid format") }
     else if (initialized) then { throw("Already initialized") }
     else if (startHeight > endHeight) then { throw("Start height can't be larger than end height") }
     else if (quorumPercent < 1 || quorumPercent > 99) then { throw("Quorum percent should be in range [1, 99]") }
@@ -59,8 +121,7 @@ func constructor(availableOptions: String, votingAsset: String, startHeight: Int
             IntegerEntry(endHeightKey, endHeight),
             IntegerEntry(totalKey, votingAssetInfo.quantity),
             IntegerEntry(quorumPercentKey, quorumPercent),
-            IntegerEntry(quorumKey, quorum),
-            IntegerEntry(votedKey, 0)
+            IntegerEntry(quorumKey, quorum)
         ]
     }
 }
@@ -89,7 +150,33 @@ func put() = {
 
 @Callable(i)
 func castVote(selectedOptions: String) = {
-    [StringEntry("hello", "world")]
+    let payments = i.payments.size()
+    let initialized = getBoolOrFalse(initializedKey)
+    let startHeight = getIntOrFail(startHeightKey)
+    let endHeight = getIntOrFail(endHeightKey)
+    let availableOptions = getStringOrFail(availableOptionsKey).split(",")
+    if (i.caller == this) then { throw("Access denied") }
+    else if (payments != 0) then { throw("Payments are prohibited") }
+    else if (!initialized) then { throw("Not initialized") }
+    else if (height < startHeight) then { throw("Voting is not started") }
+    else if (height > endHeight) then { throw("Voting is over") }
+    else if (!availableOptions.containsElement(selectedOptions)) then { throw("Incorrect voting option") }
+    else {
+        let userAddress = toString(i.caller)
+        let currentUserVotingPower = getIntOrZero(userVotingPowerKey(userAddress))
+        let currentUserBalance = getIntOrZero(userBalanceKey(userAddress))
+        let voted = getIntOrZero(votedKey) + currentUserBalance - currentUserVotingPower
+        let votingAssetInfo = getAssetOrFail(getStringOrFail(votingAssetKey))
+        let quorumPercent = getIntOrFail(quorumPercentKey)
+        let quorum = fraction(votingAssetInfo.quantity, quorumPercent, 100)
+        [
+            StringEntry(userLastVoteKey(userAddress), selectedOptions),
+            IntegerEntry(userVotingPowerKey(userAddress), currentUserBalance),
+            IntegerEntry(votedKey, voted),
+            IntegerEntry(totalKey, votingAssetInfo.quantity),
+            IntegerEntry(quorumKey, quorum)
+        ] ++ getUserOptions(userAddress, selectedOptions)
+    }
 }
 
 @Callable(i)

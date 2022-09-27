@@ -52,9 +52,9 @@ public static class PrivateNode
         Instance.Broadcast(MainAccount, transferTransaction);
     }
 
-    public static void SetData(PrivateKeyAccount account, string key, object value)
+    public static void SetData(PrivateKeyAccount account, Dictionary<string, object> entries)
     {
-        var dataTransaction = new DataTransaction(ChainId, account.PublicKey, new Dictionary<string, object> { { key, value } });
+        var dataTransaction = new DataTransaction(ChainId, account.PublicKey, entries);
         Instance.Broadcast(account, dataTransaction);
     }
 
@@ -77,4 +77,6 @@ public static class PrivateNode
 
         throw new Exception("Transaction was not written");
     }
+
+    public static Dictionary<string, object> Compile(this Node node, string script) => node.Post("/utils/script/compile", script).ParseJsonObject();
 }

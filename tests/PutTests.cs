@@ -1,6 +1,5 @@
 ﻿using TokenVoting.Tests.Extensions;
 using TokenVoting.Tests.Fixture;
-using TokenVoting.Tests.Models;
 
 namespace TokenVoting.Tests;
 
@@ -8,9 +7,9 @@ public class PutTests
 {
     private readonly VotingAccount _votingAccount;
 
-    public PutTests()
+    public PutTests(ITestOutputHelper testOutputHelper)
     {
-        _votingAccount = new VotingAccount();
+        _votingAccount = new VotingAccount(testOutputHelper);
     }
 
     [Fact]
@@ -34,11 +33,11 @@ public class PutTests
     [Fact]
     public void InvokeWhenNotInitialized_ThrowException()
     {
-        var votingAsset = PrivateNode.IssueAsset(10, 0);
+        var votingAsset = PrivateNode.IssueAsset(10, 2);
         var account = PrivateNode.GenerateAccount();
-        PrivateNode.TransferAsset(votingAsset, 1, account);
+        PrivateNode.TransferAsset(votingAsset, 4, account);
 
-        var invoke = () => _votingAccount.InvokePut(account, votingAsset, 1);
+        var invoke = () => _votingAccount.InvokePut(account, votingAsset, 4);
 
         invoke.Should().Throw<Exception>().WithMessage("*Not initialized");
     }
@@ -46,23 +45,24 @@ public class PutTests
     [Fact]
     public void InvokeWithMultiplePayments_ThrowException()
     {
-        var votingAsset = PrivateNode.IssueAsset(8, 6);
-        var anotherAsset = PrivateNode.IssueAsset(8, 6);
+        var votingAsset = PrivateNode.IssueAsset(10, 2);
         var account = PrivateNode.GenerateAccount();
-        PrivateNode.TransferAsset(votingAsset, 1, account);
-        PrivateNode.TransferAsset(anotherAsset, 1, account);
-        _votingAccount.InvokeConstructor(new ConstructorOptions
+        PrivateNode.TransferAsset(votingAsset, 4, account);
+        _votingAccount.SetData(new Dictionary<string, object>
         {
-            AvailableOptions = "option:yes,option:no",
-            VotingAssetId = votingAsset.Id,
-            StartHeight = 100,
-            EndHeight = 200,
-            QuorumPercent = 50,
+            { "initialized", true },
+            { "available_options", "increaseA,decreaseA" },
+            { "voting_asset", votingAsset.Id },
+            { "start_height", 100L },
+            { "end_height", 200L },
+            { "total", 1000L },
+            { "quorum_percent", 50L },
+            { "quorum", 500L },
         });
         var payments = new Dictionary<Asset, decimal>
         {
-            { votingAsset, 1 },
-            { anotherAsset, 1 },
+            { votingAsset, 4 },
+            { Assets.WAVES, 0.1M },
         };
 
         var invoke = () => _votingAccount.InvokePut(account, payments);
@@ -73,20 +73,21 @@ public class PutTests
     [Fact]
     public void InvokeWithWrongPaymentAsset_ThrowException()
     {
-        var votingAsset = PrivateNode.IssueAsset(8, 6);
-        var anotherAsset = PrivateNode.IssueAsset(8, 6);
+        var votingAsset = PrivateNode.IssueAsset(10, 2);
         var account = PrivateNode.GenerateAccount();
-        PrivateNode.TransferAsset(anotherAsset, 1, account);
-        _votingAccount.InvokeConstructor(new ConstructorOptions
+        _votingAccount.SetData(new Dictionary<string, object>
         {
-            AvailableOptions = "option:yes,option:no",
-            VotingAssetId = votingAsset.Id,
-            StartHeight = 100,
-            EndHeight = 200,
-            QuorumPercent = 50,
+            { "initialized", true },
+            { "available_options", "increaseA,decreaseA" },
+            { "voting_asset", votingAsset.Id },
+            { "start_height", 100L },
+            { "end_height", 200L },
+            { "total", 1000L },
+            { "quorum_percent", 50L },
+            { "quorum", 500L },
         });
 
-        var invoke = () => _votingAccount.InvokePut(account, anotherAsset, 1);
+        var invoke = () => _votingAccount.InvokePut(account, Assets.WAVES, 0.1M);
 
         invoke.Should().Throw<Exception>().WithMessage("*Wrong asset");
     }
@@ -94,19 +95,22 @@ public class PutTests
     [Fact]
     public void InvokeWhenVotingIsNotStarted_ThrowException()
     {
-        var votingAsset = PrivateNode.IssueAsset(8, 6);
+        var votingAsset = PrivateNode.IssueAsset(10, 2);
         var account = PrivateNode.GenerateAccount();
-        PrivateNode.TransferAsset(votingAsset, 1, account);
-        _votingAccount.InvokeConstructor(new ConstructorOptions
+        PrivateNode.TransferAsset(votingAsset, 4, account);
+        _votingAccount.SetData(new Dictionary<string, object>
         {
-            AvailableOptions = "option:yes,option:no",
-            VotingAssetId = votingAsset.Id,
-            StartHeight = 10000000,
-            EndHeight = 20000000,
-            QuorumPercent = 50,
+            { "initialized", true },
+            { "available_options", "increaseA,decreaseA" },
+            { "voting_asset", votingAsset.Id },
+            { "start_height", 10000000L },
+            { "end_height", 20000000L },
+            { "total", 1000L },
+            { "quorum_percent", 50L },
+            { "quorum", 500L },
         });
 
-        var invoke = () => _votingAccount.InvokePut(account, votingAsset, 1);
+        var invoke = () => _votingAccount.InvokePut(account, votingAsset, 4);
 
         invoke.Should().Throw<Exception>().WithMessage("*Voting is not started");
     }
@@ -114,19 +118,22 @@ public class PutTests
     [Fact]
     public void InvokeWhenVotingIsOver_ThrowException()
     {
-        var votingAsset = PrivateNode.IssueAsset(8, 6);
+        var votingAsset = PrivateNode.IssueAsset(10, 2);
         var account = PrivateNode.GenerateAccount();
-        PrivateNode.TransferAsset(votingAsset, 1, account);
-        _votingAccount.InvokeConstructor(new ConstructorOptions
+        PrivateNode.TransferAsset(votingAsset, 4, account);
+        _votingAccount.SetData(new Dictionary<string, object>
         {
-            AvailableOptions = "option:yes,option:no",
-            VotingAssetId = votingAsset.Id,
-            StartHeight = 1,
-            EndHeight = 1,
-            QuorumPercent = 50,
+            { "initialized", true },
+            { "available_options", "increaseA,decreaseA" },
+            { "voting_asset", votingAsset.Id },
+            { "start_height", 1L },
+            { "end_height", 1L },
+            { "total", 1000L },
+            { "quorum_percent", 50L },
+            { "quorum", 500L },
         });
 
-        var invoke = () => _votingAccount.InvokePut(account, votingAsset, 1);
+        var invoke = () => _votingAccount.InvokePut(account, votingAsset, 4);
 
         invoke.Should().Throw<Exception>().WithMessage("*Voting is over");
     }
@@ -134,16 +141,19 @@ public class PutTests
     [Fact]
     public void Invoke_Success()
     {
-        var votingAsset = PrivateNode.IssueAsset(8, 6);
+        var votingAsset = PrivateNode.IssueAsset(10, 2);
         var account = PrivateNode.GenerateAccount();
         PrivateNode.TransferAsset(votingAsset, 4, account);
-        _votingAccount.InvokeConstructor(new ConstructorOptions
+        _votingAccount.SetData(new Dictionary<string, object>
         {
-            AvailableOptions = "option:yes,option:no",
-            VotingAssetId = votingAsset.Id,
-            StartHeight = 1,
-            EndHeight = 10000000,
-            QuorumPercent = 50,
+            { "initialized", true },
+            { "available_options", "increaseA,decreaseA" },
+            { "voting_asset", votingAsset.Id },
+            { "start_height", 1L },
+            { "end_height", 10000000L },
+            { "total", 1000L },
+            { "quorum_percent", 50L },
+            { "quorum", 500L },
         });
 
         var transactionId = _votingAccount.InvokePut(account, votingAsset, 3);
@@ -152,24 +162,26 @@ public class PutTests
         {
             transactionId.Should().NotBeEmpty();
 
-            var actualData = PrivateNode.Instance.GetAddressData(_votingAccount.Account.Address);
-            actualData.Should().ContainKey($"balance_{account.Address}").WhoseValue.Should().Be(3000000L);
+            _votingAccount.GetData().Should().ContainKey($"balance_{account.Address}").WhoseValue.Should().Be(300);
         }
     }
 
     [Fact]
     public void InvokeSecondTime_Success()
     {
-        var votingAsset = PrivateNode.IssueAsset(8, 6);
+        var votingAsset = PrivateNode.IssueAsset(10, 2);
         var account = PrivateNode.GenerateAccount();
         PrivateNode.TransferAsset(votingAsset, 4, account);
-        _votingAccount.InvokeConstructor(new ConstructorOptions
+        _votingAccount.SetData(new Dictionary<string, object>
         {
-            AvailableOptions = "option:yes,option:no",
-            VotingAssetId = votingAsset.Id,
-            StartHeight = 1,
-            EndHeight = 10000000,
-            QuorumPercent = 50,
+            { "initialized", true },
+            { "available_options", "increaseA,decreaseA" },
+            { "voting_asset", votingAsset.Id },
+            { "start_height", 1L },
+            { "end_height", 10000000L },
+            { "total", 1000L },
+            { "quorum_percent", 50L },
+            { "quorum", 500L },
         });
 
         _votingAccount.InvokePut(account, votingAsset, 3);
@@ -179,26 +191,28 @@ public class PutTests
         {
             transactionId.Should().NotBeEmpty();
 
-            var actualData = PrivateNode.Instance.GetAddressData(_votingAccount.Account.Address);
-            actualData.Should().ContainKey($"balance_{account.Address}").WhoseValue.Should().Be(4000000L);
+            _votingAccount.GetData().Should().ContainKey($"balance_{account.Address}").WhoseValue.Should().Be(400);
         }
     }
 
     [Fact]
     public void InvokeByDifferentAccounts_Success()
     {
-        var votingAsset = PrivateNode.IssueAsset(8, 6);
+        var votingAsset = PrivateNode.IssueAsset(10, 2);
         var account1 = PrivateNode.GenerateAccount();
         var account2 = PrivateNode.GenerateAccount();
         PrivateNode.TransferAsset(votingAsset, 4, account1);
         PrivateNode.TransferAsset(votingAsset, 2, account2);
-        _votingAccount.InvokeConstructor(new ConstructorOptions
+        _votingAccount.SetData(new Dictionary<string, object>
         {
-            AvailableOptions = "option:yes,option:no",
-            VotingAssetId = votingAsset.Id,
-            StartHeight = 1,
-            EndHeight = 10000000,
-            QuorumPercent = 50,
+            { "initialized", true },
+            { "available_options", "increaseA,decreaseA" },
+            { "voting_asset", votingAsset.Id },
+            { "start_height", 1L },
+            { "end_height", 10000000L },
+            { "total", 1000L },
+            { "quorum_percent", 50L },
+            { "quorum", 500L },
         });
 
         var transactionId1 = _votingAccount.InvokePut(account1, votingAsset, 4);
@@ -209,9 +223,9 @@ public class PutTests
             transactionId1.Should().NotBeEmpty();
             transactionId2.Should().NotBeEmpty();
 
-            var actualData = PrivateNode.Instance.GetAddressData(_votingAccount.Account.Address);
-            actualData.Should().ContainKey($"balance_{account1.Address}").WhoseValue.Should().Be(4000000L);
-            actualData.Should().ContainKey($"balance_{account2.Address}").WhoseValue.Should().Be(2000000L);
+            var actualData = _votingAccount.GetData();
+            actualData.Should().ContainKey($"balance_{account1.Address}").WhoseValue.Should().Be(400);
+            actualData.Should().ContainKey($"balance_{account2.Address}").WhoseValue.Should().Be(200);
         }
     }
 }
