@@ -62,6 +62,28 @@ public class CastVoteTests
     }
 
     [Fact]
+    public void InvokeWhenDoesntPut_ThrowException()
+    {
+        var votingAsset = PrivateNode.IssueAsset(10, 2);
+        var account = PrivateNode.GenerateAccount();
+        _votingAccount.SetData(new Dictionary<string, object>
+        {
+            { "initialized", true },
+            { "available_options", "increaseA,decreaseA" },
+            { "voting_asset", votingAsset.Id },
+            { "start_height", 1L },
+            { "end_height", 20000000L },
+            { "total", 1000L },
+            { "quorum_percent", 50L },
+            { "quorum", 500L },
+        });
+
+        var invoke = () => _votingAccount.InvokeCastVote(account, "increaseA");
+
+        invoke.Should().Throw<Exception>().WithMessage("*Key not exist");
+    }
+
+    [Fact]
     public void InvokeWhenVotingIsOver_ThrowException()
     {
         var account = PrivateNode.GenerateAccount();

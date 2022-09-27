@@ -164,7 +164,7 @@ func castVote(selectedOptions: String) = {
     else {
         let userAddress = toString(i.caller)
         let currentUserVotingPower = getIntOrZero(userVotingPowerKey(userAddress))
-        let currentUserBalance = getIntOrZero(userBalanceKey(userAddress))
+        let currentUserBalance = getIntOrFail(userBalanceKey(userAddress))
         let voted = getIntOrZero(votedKey) + currentUserBalance - currentUserVotingPower
         let votingAssetInfo = getAssetOrFail(getStringOrFail(votingAssetKey))
         let quorumPercent = getIntOrFail(quorumPercentKey)
