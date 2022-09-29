@@ -7,6 +7,8 @@ public static class PrivateNode
 
     public const char ChainId = 'R';
     public const string FakeAssetId = "7KsnSZrrvdAuwvdPi8nVEXJMPqZZJKwtcQJ2TssdouKm";
+    public const string FakeAddress1 = "3MN22E7Y4CDgJ9ozU17QEvZo3oMPVVVmgEQ";
+    public const string FakeAddress2 = "3MFwV4eSKA3wUbN7iKAKyaEVBzXqa5uZCHX";
     public static readonly Node Instance;
 
     static PrivateNode()
@@ -79,4 +81,11 @@ public static class PrivateNode
     }
 
     public static Dictionary<string, object> Compile(this Node node, string script) => node.Post("/utils/script/compile", script).ParseJsonObject();
+
+    public static string EvaluateString(this Node node, string contract, string expression)
+    {
+        var jsonObject = node.Post($"/utils/script/evaluate/{contract}", $"{{\"expr\":\"{expression}\"}}").ParseJsonObject();
+        var resultJson = (string)jsonObject["message"];
+        return resultJson;
+    }
 }

@@ -55,4 +55,10 @@ public class VotingAccount
         var invokeScriptTransaction = new InvokeScriptTransaction(PrivateNode.ChainId, callerAccount.PublicKey, Account.Address, "withdraw", null, payment, 0.005M, Assets.WAVES);
         return PrivateNode.Instance.Broadcast(callerAccount, invokeScriptTransaction);
     }
+
+    public JsonElement GetVotingStatus()
+    {
+        var votingStatus = PrivateNode.Instance.EvaluateString(Account.Address, "getVotingStatusREADONLY()");
+        return JsonDocument.Parse(votingStatus).RootElement;
+    }
 }

@@ -95,9 +95,7 @@ func getUserOptions(userAddress: String, options: String) = {
         getUserOption(userBalance, userVotingPower, optionsList[3], getUserLastOptionOrUnit(userAddress, 3)) ++
         getUserOption(userBalance, userVotingPower, optionsList[4], getUserLastOptionOrUnit(userAddress, 4))
     }
-    else {
-        throw("Not supported")
-    }
+    else { throw("Not supported") }
 }
 
 @Callable(i)
@@ -199,6 +197,42 @@ func withdraw() = {
             DeleteEntry(userBalanceKey(userAddress))
         ]
     }
+}
+
+@Callable(i)
+func getVotePropertiesREADONLY(index: Int, length: Int, options: List[String], properties: String) = {
+    if (index >= length) then { ([], properties) }
+    else {
+        let currentVote = options[index]
+        let voteValue = getIntOrZero(voteKey(currentVote))
+        let property = "\"" + currentVote + "\":" + voteValue.toString()
+        let newProperties = if (index == 0) then { property }
+            else if (properties.contains(property)) then { properties }
+            else { properties + "," + property }
+        
+        strict result = invoke(this, "getVotePropertiesREADONLY", [index + 1, length, options, newProperties], [])
+        ([], result)
+    }
+}
+
+@Callable(i)
+func getVotingStatusREADONLY() = {
+    let options = getStringOrFail(availableOptionsKey)
+    let nonUniqueOptionsList = options.split(":").makeString(",").split(",")
+    strict voteProperties = invoke(this, "getVotePropertiesREADONLY", [0, nonUniqueOptionsList.size(), nonUniqueOptionsList, ""], [])
+
+    throw(
+    "{\"assetId\":\"" + getStringOrFail(votingAssetKey) + "\"," +
+    "\"startHeight\":" + getIntOrFail(startHeightKey).toString() + "," +
+    "\"endHeight\":" + getIntOrFail(endHeightKey).toString() + "," + 
+    "\"total\":" + getIntOrFail(totalKey).toString() + "," +
+    "\"quorumPercent\":" + getIntOrFail(quorumPercentKey).toString() + "," +
+    "\"quorum\":" + getIntOrFail(quorumKey).toString() + "," +
+    "\"voted\":" + getIntOrZero(votedKey).toString() + "," +
+    "\"isQuorumReached\":" + toString(getIntOrZero(votedKey) >= getIntOrFail(quorumKey)) + "," +
+    "\"isVotingOver\":" + toString(height > getIntOrFail(endHeightKey)) + "," +
+    "\"votes\":{" + voteProperties.exactAs[String] + "}" +
+    "}")
 }
 
 @Verifier(tx)

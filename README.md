@@ -41,6 +41,30 @@ A voter can:
   - It's possible to change a vote by invoking the function again with another options
 - `@Callable(i) func withdraw()`
   - Can be invoked by a voter to withdraw tokens from the contract after voting ends
+- `@Callable(i) func getVotingStatusREADONLY()`
+  - Can be used in endpoint /utils/script/evaluate/{address} of the Node API to receive voting status in the following
+    json format:
+
+```json
+ {
+    "assetId": "9PbbmVmedugmNFCh6byvVynkDAuZAy11vwdUon9RcjZ3",
+    "startHeight": 2248148,
+    "endHeight": 2248178,
+    "total": 60000,
+    "quorumPercent": 30,
+    "quorum": 18000,
+    "voted": 27500,
+    "isQuorumReached": true,
+    "isVotingOver": true,
+    "votes": {
+        "decrease-a": 500,
+        "decrease-b": 0,
+        "increase-b": 2000,
+        "keep-b": 25500,
+        "increase-a": 27000
+    }
+}
+```
 
 ## Example
 
